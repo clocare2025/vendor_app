@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vender_app/api/auth_api.dart';
 import 'package:vender_app/core/constants/api_constants.dart';
@@ -12,11 +14,9 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Signup details + OTP held in memory while a registration OTP is pending
-  // verification (set by [requestRegistrationOtp], consumed by
-  // [verifyOtpAndRegister]).
+  // Signup details held in memory while the vendor is on the OTP screen.
+  // Consumed by [verifyOtpAndRegister]; cleared on success.
   Map<String, String>? _pendingSignup;
-  String? _pendingOtpCode;
 
   String? get token => _token;
   Vendor? get vendor => _vendor;
@@ -104,7 +104,6 @@ class AuthProvider with ChangeNotifier {
           'address': address,
           'password': password,
         };
-        _pendingOtpCode = response.data?.otpData?.otpCode;
         return true;
       } else {
         _errorMessage = response.msg ?? 'Failed to send OTP';
@@ -134,11 +133,6 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      if (otp.isEmpty || otp != _pendingOtpCode) {
-        _errorMessage = 'Invalid OTP, please try again';
-        return false;
-      }
-
       final response = await _authApi.userSignup(
         pending['name']!,
         pending['mobile']!,
@@ -146,6 +140,7 @@ class AuthProvider with ChangeNotifier {
         pending['pincode']!,
         pending['address']!,
         pending['password']!,
+        otp,
       );
       if (response.status == true &&
           response.data?.vendor?.accessToken != null) {
@@ -154,7 +149,6 @@ class AuthProvider with ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(AppConstants.token, _token!);
         _pendingSignup = null;
-        _pendingOtpCode = null;
         return true;
       } else {
         _errorMessage = response.msg ?? 'Registration failed';
@@ -186,7 +180,6 @@ class AuthProvider with ChangeNotifier {
 
       final response = await _authApi.sendOtp(pending['mobile']!);
       if (response.status == true) {
-        _pendingOtpCode = response.data?.otpData?.otpCode;
         return true;
       } else {
         _errorMessage = response.msg ?? 'Failed to resend OTP';
@@ -199,6 +192,29 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Fetch fresh vendor profile from backend and update local state + token
+  Future<void> getProfile() async {
+    if (_token == null) return;
+    try {
+      final res = await http.get(
+        Uri.parse(ApiConstants.profile),
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        if (body['status'] == true) {
+          final vendorJson =
+              body['data']['vendor'] as Map<String, dynamic>? ?? {};
+          _vendor = Vendor.fromJson(vendorJson);
+          notifyListeners();
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> logout() async {

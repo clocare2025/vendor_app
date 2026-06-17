@@ -112,9 +112,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
                   validator: (v) {
-                    if (v == null || v.isEmpty)
+                    if (v == null || v.isEmpty) {
                       return 'Phone number is required';
-                    if (v.length < 10) return 'Enter a valid phone number';
+                    }
+                    if (!RegExp(r'^[0-9]{10}$').hasMatch(v)) {
+                      return 'Enter a valid 10-digit mobile number';
+                    }
                     return null;
                   },
                 ),
@@ -167,8 +170,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   isPassword: true,
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Password is required';
-                    if (v.length < 6)
+                    if (v.length < 6) {
                       return 'Password must be at least 6 characters';
+                    }
                     return null;
                   },
                 ),
@@ -180,8 +184,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icons.lock_outline,
                   isPassword: true,
                   validator: (v) {
-                    if (v != _passwordController.text)
+                    if (v != _passwordController.text) {
                       return 'Passwords do not match';
+                    }
                     return null;
                   },
                 ),

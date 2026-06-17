@@ -26,6 +26,7 @@ class AuthApi {
     String pincode,
     String address,
     String password,
+    String otp,
   ) async {
     final response = await http.post(
       Uri.parse(ApiConstants.signup),
@@ -37,6 +38,7 @@ class AuthApi {
         'pincode': pincode,
         'address': address,
         'password': password,
+        'otp': otp,
       }),
     );
     print(response.body);

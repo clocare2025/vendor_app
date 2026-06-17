@@ -81,6 +81,12 @@ class Vendor {
   final String createdAt;
   final String updatedAt;
 
+  // KYC onboarding
+  final String kycStatus; // "not_submitted" | "submitted" | "approved" | "rejected"
+  final String kycRejectionReason;
+  final String idProofType;
+  final List<SelectedService> selectedServices;
+
   Vendor({
     required this.id,
     required this.name,
@@ -119,6 +125,10 @@ class Vendor {
     this.bankDetails = const [],
     this.createdAt = '',
     this.updatedAt = '',
+    this.kycStatus = 'not_submitted',
+    this.kycRejectionReason = '',
+    this.idProofType = '',
+    this.selectedServices = const [],
   });
 
   static bool _asBool(dynamic v) {
@@ -172,6 +182,12 @@ class Vendor {
       bankDetails: List<dynamic>.from(json['bankDetails'] ?? const []),
       createdAt: json['createdAt']?.toString() ?? '',
       updatedAt: json['updatedAt']?.toString() ?? '',
+      kycStatus: json['kycStatus']?.toString() ?? 'not_submitted',
+      kycRejectionReason: json['kycRejectionReason']?.toString() ?? '',
+      idProofType: json['idProofType']?.toString() ?? '',
+      selectedServices: (json['selectedServices'] as List<dynamic>? ?? [])
+          .map((e) => SelectedService.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -236,4 +252,23 @@ class Vendor {
       'accessToken': accessToken ?? this.accessToken,
     });
   }
+}
+
+class SelectedService {
+  final int serviceId;
+  final String service;
+
+  const SelectedService({required this.serviceId, required this.service});
+
+  factory SelectedService.fromJson(Map<String, dynamic> json) {
+    return SelectedService(
+      serviceId: (json['service_id'] as num?)?.toInt() ?? 0,
+      service: json['service']?.toString() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'service_id': serviceId,
+        'service': service,
+      };
 }

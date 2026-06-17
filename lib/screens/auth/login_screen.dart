@@ -5,7 +5,7 @@ import '../../core/constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
-import '../main_screen.dart';
+import '../onboarding/onboarding_router.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -36,8 +36,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (vendor != null) {
+      // Route by KYC status — only approved + active vendors reach the dashboard.
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => MainScreen()),
+        MaterialPageRoute(builder: (_) => vendorLandingScreen(auth.vendor)),
         (route) => false,
       );
     } else if (auth.errorMessage != null) {

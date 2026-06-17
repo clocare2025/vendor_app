@@ -4,7 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
-import '../main_screen.dart';
+import '../onboarding/onboarding_router.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -29,15 +29,27 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _init() async {
-    await Provider.of<AuthProvider>(context, listen: false).checkAuthStatus();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    await auth.checkAuthStatus();
+
+    if (auth.isAuthenticated) {
+      // Fetch fresh profile to get latest kycStatus from server
+      await auth.getProfile();
+    }
+
     await Future.delayed(const Duration(milliseconds: 1600));
     if (!mounted) return;
 
-    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.isAuthenticated) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      return;
+    }
+
+    // Route by KYC / onboarding status (shared with login & OTP screens).
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => auth.isAuthenticated ? MainScreen() : const LoginScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => vendorLandingScreen(auth.vendor)),
     );
   }
 

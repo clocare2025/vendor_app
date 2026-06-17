@@ -6,7 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/custom_button.dart';
-import '../main_screen.dart';
+import '../onboarding/onboarding_router.dart';
 
 class OtpScreen extends StatefulWidget {
   final String phone;
@@ -49,8 +49,10 @@ class _OtpScreenState extends State<OtpScreen> {
     if (!mounted) return;
 
     if (success) {
+      // New vendor → kycStatus is "not_submitted", so this routes into the
+      // KYC onboarding flow, not the dashboard.
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => MainScreen()),
+        MaterialPageRoute(builder: (_) => vendorLandingScreen(auth.vendor)),
         (route) => false,
       );
     } else {
