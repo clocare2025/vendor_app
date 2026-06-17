@@ -30,12 +30,12 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final success = await auth.login(
-      mobile: _mobileController.text.trim(),
-      password: _passwordController.text,
+    final vendor = await auth.login(
+      _mobileController.text.trim(),
+      _passwordController.text,
     );
     if (!mounted) return;
-    if (success) {
+    if (vendor != null) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => MainScreen()),
         (route) => false,
@@ -96,8 +96,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Mobile number is required';
+                    }
                     if (value.length < 10) return 'Enter a valid mobile number';
                     return null;
                   },
@@ -110,10 +111,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: Icons.lock_outline,
                   isPassword: true,
                   validator: (value) {
-                    if (value == null || value.isEmpty)
+                    if (value == null || value.isEmpty) {
                       return 'Password is required';
-                    if (value.length < 6)
+                    }
+                    if (value.length < 6) {
                       return 'Password must be at least 6 characters';
+                    }
                     return null;
                   },
                 ),
