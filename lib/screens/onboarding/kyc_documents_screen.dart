@@ -6,7 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../widgets/custom_button.dart';
-import 'kyc_services_screen.dart';
+import '../main_screen.dart';
 import 'onboarding_widgets.dart';
 
 class KycDocumentsScreen extends StatefulWidget {
@@ -75,6 +75,7 @@ class _KycDocumentsScreenState extends State<KycDocumentsScreen> {
 
   Future<void> _next() async {
     final p = context.read<OnboardingProvider>();
+    final auth = context.read<AuthProvider>();
 
     if (p.profilePic == null) {
       _showError('Please upload your profile photo.');
@@ -85,13 +86,17 @@ class _KycDocumentsScreenState extends State<KycDocumentsScreen> {
       return;
     }
 
-    final token = context.read<AuthProvider>().token!;
-    final ok = await p.submitKyc(token);
+    final ok = await p.submitKyc(auth.token!);
     if (!mounted) return;
 
     if (ok) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const KycServicesScreen()),
+      // Refresh vendor profile so kycStatus is up-to-date in AuthProvider.
+      await auth.getProfile();
+      if (!mounted) return;
+      // Replace the full navigation stack with the main screen.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => MainScreen()),
+        (route) => false,
       );
     } else if (p.errorMessage != null) {
       _showError(p.errorMessage!);
@@ -117,7 +122,7 @@ class _KycDocumentsScreenState extends State<KycDocumentsScreen> {
       ),
       body: Column(
         children: [
-          const OnboardingStepIndicator(current: 2, total: 4),
+          const OnboardingStepIndicator(current: 2, total: 2),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -182,7 +187,7 @@ class _KycDocumentsScreenState extends State<KycDocumentsScreen> {
 
                   Consumer<OnboardingProvider>(
                     builder: (_, prov, __) => CustomButton(
-                      text: 'Next: Select Services',
+                      text: 'Submit KYC for Review',
                       isLoading: prov.isLoading,
                       onPressed: _next,
                     ),

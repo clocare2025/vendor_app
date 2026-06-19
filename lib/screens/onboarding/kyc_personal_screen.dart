@@ -95,7 +95,7 @@ class _KycPersonalScreenState extends State<KycPersonalScreen> {
       ),
       body: Column(
         children: [
-          const OnboardingStepIndicator(current: 1, total: 4),
+          const OnboardingStepIndicator(current: 1, total: 2),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),

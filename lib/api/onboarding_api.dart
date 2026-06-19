@@ -86,6 +86,54 @@ class OnboardingApi {
     }
   }
 
+  // ── KYC update (re-edit after rejection, photos optional) ────────────────
+
+  Future<void> updateKyc({
+    required String token,
+    required String gender,
+    required String dob,
+    required String idProofType,
+    required String idProofNumber,
+    String? email,
+    String? alternativeMobile,
+    File? profilePic,
+    File? idProofPic,
+  }) async {
+    final request = http.MultipartRequest(
+      'PATCH',
+      Uri.parse(ApiConstants.kycUpdate),
+    );
+    request.headers['Authorization'] = 'Bearer $token';
+    request.fields['gender'] = gender;
+    request.fields['dob'] = dob;
+    request.fields['idProofType'] = idProofType;
+    request.fields['idProofNumber'] = idProofNumber;
+    if (email != null && email.isNotEmpty) request.fields['email'] = email;
+    if (alternativeMobile != null && alternativeMobile.isNotEmpty) {
+      request.fields['alternativeMobile'] = alternativeMobile;
+    }
+    if (profilePic != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'profilePic',
+        profilePic.path,
+        contentType: _imageContentType(profilePic.path),
+      ));
+    }
+    if (idProofPic != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'idProofPic',
+        idProofPic.path,
+        contentType: _imageContentType(idProofPic.path),
+      ));
+    }
+    final streamed = await request.send();
+    final res = await http.Response.fromStream(streamed);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200 || body['status'] != true) {
+      throw Exception(body['msg'] ?? 'KYC update failed');
+    }
+  }
+
   // ── Service list (for selection screen) ──────────────────────────────────
 
   Future<List<ServiceModel>> getServiceList(String token) async {

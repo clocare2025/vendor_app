@@ -44,6 +44,19 @@ class OnboardingProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Pre-fill form fields from the vendor's existing profile (used when
+  // re-editing KYC after rejection so the form comes up pre-populated).
+  void preloadFromVendor(Vendor vendor) {
+    gender = vendor.gender;
+    dob = vendor.dob;
+    idProofType = vendor.idProofType;
+    idProofNumber = vendor.idProofName;
+    email = vendor.email;
+    alternativeMobile = vendor.alternativeMobile;
+    // Leave profilePic / idProofPic null — vendor can optionally re-upload.
+    notifyListeners();
+  }
+
   // ── Load services from backend ────────────────────────────────────────────
 
   Future<bool> loadServices(String token) async {
@@ -127,7 +140,7 @@ class OnboardingProvider with ChangeNotifier {
   String getPriceInput(int serviceId, int categoryId) =>
       priceInputs['${serviceId}_$categoryId'] ?? '';
 
-  // ── Step 1 submit: KYC + photos ──────────────────────────────────────────
+  // ── KYC submit (initial — both photos required) ───────────────────────────
 
   Future<bool> submitKyc(String token) async {
     if (profilePic == null || idProofPic == null) {
@@ -150,6 +163,35 @@ class OnboardingProvider with ChangeNotifier {
         alternativeMobile: alternativeMobile,
         profilePic: profilePic!,
         idProofPic: idProofPic!,
+      );
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // ── KYC update (re-edit after rejection — photos optional) ────────────────
+
+  Future<bool> updateKyc(String token) async {
+    try {
+      _isLoading = true;
+      _errorMessage = null;
+      notifyListeners();
+
+      await _api.updateKyc(
+        token: token,
+        gender: gender,
+        dob: dob,
+        idProofType: idProofType,
+        idProofNumber: idProofNumber,
+        email: email,
+        alternativeMobile: alternativeMobile,
+        profilePic: profilePic,   // null = keep existing on server
+        idProofPic: idProofPic,
       );
       return true;
     } catch (e) {

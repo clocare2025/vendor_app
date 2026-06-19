@@ -2,28 +2,15 @@ import 'package:flutter/material.dart';
 import '../../models/vendor_model.dart';
 import '../main_screen.dart';
 import 'kyc_personal_screen.dart';
-import 'pending_screen.dart';
-import 'rejected_screen.dart';
 
-/// Decides where a vendor should land based on their KYC / onboarding status.
+/// Decides where a vendor lands after login / OTP / app launch.
 ///
-/// - approved + active   → dashboard (MainScreen)
-/// - submitted           → "under review" pending screen
-/// - rejected            → rejection screen (with reason, allows resubmit)
-/// - not_submitted / any → start the KYC onboarding flow
-///
-/// Used after login, after OTP registration, and on app launch (splash) so the
-/// gate is enforced everywhere.
+/// Only vendors who have never submitted KYC are sent to the KYC flow.
+/// Everyone else (submitted, approved, rejected) lands on MainScreen and sees
+/// context-appropriate banners on the HomeScreen.
 Widget vendorLandingScreen(Vendor? vendor) {
-  final kycStatus = vendor?.kycStatus ?? 'not_submitted';
-
-  if (kycStatus == 'approved' && vendor?.accountIsActive == true) {
-    return MainScreen();
-  } else if (kycStatus == 'submitted') {
-    return const KycPendingScreen();
-  } else if (kycStatus == 'rejected') {
-    return KycRejectedScreen(reason: vendor?.kycRejectionReason ?? '');
-  } else {
+  if ((vendor?.kycStatus ?? 'not_submitted') == 'not_submitted') {
     return const KycPersonalScreen();
   }
+  return MainScreen();
 }
