@@ -59,15 +59,25 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      final response = await _authApi.userLogin(mobile, password);
+      // Collect FCM token before the login request so it is saved atomically
+      final fcmToken = await NotificationService.instance.getTokenSafely();
+      final response = await _authApi.userLogin(
+        mobile,
+        password,
+        fcmToken: fcmToken,
+      );
+
       if (response.status == true &&
           response.data?.vendor?.accessToken != null) {
         _vendor = response.data!.vendor;
         _token = _vendor!.accessToken;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(AppConstants.token, _token!);
-        // Upload FCM token immediately so the vendor can receive notifications
-        NotificationService.instance.uploadToken(_token!).catchError((_) {});
+        // Fallback: if token was null during login (Firebase initialising slowly),
+        // upload it separately via PATCH /v1/auth/fcm-token
+        if (fcmToken == null) {
+          NotificationService.instance.uploadToken(_token!);
+        }
         return response;
       } else {
         _errorMessage = response.msg ?? 'Login failed';
@@ -136,6 +146,9 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
+      // Collect FCM token before signup so it is stored on the new account immediately
+      final fcmToken = await NotificationService.instance.getTokenSafely();
+
       final response = await _authApi.userSignup(
         pending['name']!,
         pending['mobile']!,
@@ -144,6 +157,7 @@ class AuthProvider with ChangeNotifier {
         pending['address']!,
         pending['password']!,
         otp,
+        fcmToken: fcmToken,
       );
       if (response.status == true &&
           response.data?.vendor?.accessToken != null) {
@@ -152,7 +166,6 @@ class AuthProvider with ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(AppConstants.token, _token!);
         _pendingSignup = null;
-        NotificationService.instance.uploadToken(_token!).catchError((_) {});
         return true;
       } else {
         _errorMessage = response.msg ?? 'Registration failed';

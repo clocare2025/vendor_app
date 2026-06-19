@@ -41,7 +41,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _bootstrap() async {
-    // Capture all context-dependent objects BEFORE any await
     final auth    = context.read<AuthProvider>();
     final status  = context.read<StatusProvider>();
     final orders  = context.read<OrderProvider>();
@@ -49,28 +48,22 @@ class _MainScreenState extends State<MainScreen> {
     final token   = auth.token ?? '';
     if (token.isEmpty) return;
 
-    // 1. Fetch + sync online/offline status
     await status.fetchStatus(token);
 
-    // 2. Upload FCM token + wire listeners (no-op if Firebase not configured)
     try {
       await NotificationService.instance.uploadToken(token);
       NotificationService.instance.watchTokenRefresh(token);
       NotificationService.instance.onNewOrder = (order) {
-        if (mounted) NewOrderOverlay.of(context)?.addOrder(order);
+        NewOrderOverlay.push(order);
       };
       NotificationService.instance.listenForeground();
       NotificationService.instance.listenOnMessageOpenedApp();
       await NotificationService.instance.handleInitialMessage();
-    } catch (_) {
-      // Firebase not configured — push notifications disabled
-    }
+    } catch (_) {}
 
-    // 4. Load orders — surface any already-assigned ones that haven't expired
     await orders.fetchOrders(token);
     if (mounted) _showPendingOrderCards(orders);
 
-    // 5. Show offline prompt if vendor is currently offline
     if (mounted && !status.isOnline) {
       await nav.push(
         MaterialPageRoute(
@@ -81,14 +74,8 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  /// For every order that is still in "assigned" state and not yet expired,
-  /// push it into the overlay so the vendor can accept/reject right away.
   void _showPendingOrderCards(OrderProvider orders) {
-    final overlay = NewOrderOverlay.of(context);
-    if (overlay == null) return;
-
     for (final o in orders.pendingOrders) {
-      // assignedAt is the time admin created it; use it as the window start
       final notification = PendingOrderNotification(
         processId:   o.id,
         orderNumber: o.orderNumber,
@@ -99,10 +86,7 @@ class _MainScreenState extends State<MainScreen> {
         pickupTime:  o.pickupTimeSlot,
         assignedAt:  o.assignedAt,
       );
-      // Skip already-expired orders
-      if (!notification.isExpired) {
-        overlay.addOrder(notification);
-      }
+      if (!notification.isExpired) NewOrderOverlay.push(notification);
     }
   }
 
@@ -110,98 +94,169 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final status = context.watch<StatusProvider>();
-    final auth   = context.read<AuthProvider>();
+    final orders  = context.watch<OrderProvider>();
+    final pending = orders.pendingOrders.length;
 
     return NewOrderOverlay(
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: AppColors.surface,
-          foregroundColor: AppColors.textPrimary,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          title: Text(
-            _currentIndex == 0
-                ? 'Home'
-                : _currentIndex == 1
-                    ? 'Orders'
-                    : 'Profile',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          actions: [
-            // ── Online / Offline toggle pill ─────────────────────────────
-            GestureDetector(
-              onTap: status.loading
-                  ? null
-                  : () => status.toggle(auth.token ?? ''),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: status.isOnline
-                      ? const Color(0xFF16A34A)
-                      : const Color(0xFF6B7280),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (status.loading)
-                      const SizedBox(
-                        width: 10, height: 10,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 1.5),
-                      )
-                    else
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: 8, height: 8,
-                        decoration: BoxDecoration(
-                          color: status.isOnline
-                              ? Colors.white
-                              : Colors.white54,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    const SizedBox(width: 6),
-                    Text(
-                      status.isOnline ? 'Online' : 'Offline',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+        backgroundColor: AppColors.background,
         body: IndexedStack(
           index: _currentIndex,
           children: _screens,
         ),
-        bottomNavigationBar: BottomNavigationBar(
+        bottomNavigationBar: _BottomNav(
           currentIndex: _currentIndex,
+          pendingCount: pending,
           onTap: _onTabSelected,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: AppStrings.home,
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bottom Navigation Bar ─────────────────────────────────────────────────────
+
+class _BottomNav extends StatelessWidget {
+  final int currentIndex;
+  final int pendingCount;
+  final void Function(int) onTap;
+
+  const _BottomNav({
+    required this.currentIndex,
+    required this.pendingCount,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(18),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: [
+              _NavItem(
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home_rounded,
+                label: AppStrings.home,
+                index: 0,
+                current: currentIndex,
+                onTap: onTap,
+              ),
+              _NavItem(
+                icon: Icons.receipt_long_outlined,
+                activeIcon: Icons.receipt_long_rounded,
+                label: AppStrings.orders,
+                index: 1,
+                current: currentIndex,
+                onTap: onTap,
+                badge: pendingCount,
+              ),
+              _NavItem(
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: AppStrings.profile,
+                index: 2,
+                current: currentIndex,
+                onTap: onTap,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final int index;
+  final int current;
+  final void Function(int) onTap;
+  final int badge;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.index,
+    required this.current,
+    required this.onTap,
+    this.badge = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = index == current;
+    final color = selected ? AppColors.primary : AppColors.textHint;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(index),
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primaryLight
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    selected ? activeIcon : icon,
+                    color: color,
+                    size: 24,
+                  ),
+                ),
+                if (badge > 0)
+                  Positioned(
+                    right: -2, top: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: AppColors.newOrder,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        badge > 9 ? '9+' : '$badge',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.receipt_long_outlined),
-              activeIcon: Icon(Icons.receipt_long),
-              label: AppStrings.orders,
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: AppStrings.profile,
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight:
+                    selected ? FontWeight.w700 : FontWeight.normal,
+                color: color,
+              ),
             ),
           ],
         ),

@@ -1,114 +1,173 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import '../onboarding/onboarding_router.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
-
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scaleAnimation;
-  late final Animation<double> _fadeAnimation;
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
+  late final AnimationController _logoCtrl;
+  late final AnimationController _textCtrl;
+  late final Animation<double> _logoScale;
+  late final Animation<double> _logoFade;
+  late final Animation<double> _textFade;
+  late final Animation<Offset> _textSlide;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-    _scaleAnimation = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
-    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
-    _controller.forward();
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ));
+
+    _logoCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _textCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+
+    _logoScale = Tween<double>(begin: 0.5, end: 1.0).animate(
+        CurvedAnimation(parent: _logoCtrl, curve: Curves.elasticOut));
+    _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _logoCtrl, curve: const Interval(0, 0.4)));
+    _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(_textCtrl);
+    _textSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _textCtrl, curve: Curves.easeOut));
+
+    _logoCtrl.forward().then((_) => _textCtrl.forward());
     _init();
   }
 
   Future<void> _init() async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final auth = context.read<AuthProvider>();
     await auth.checkAuthStatus();
-
-    if (auth.isAuthenticated) {
-      // Fetch fresh profile to get latest kycStatus from server
-      await auth.getProfile();
-    }
-
-    await Future.delayed(const Duration(milliseconds: 1600));
+    if (auth.isAuthenticated) await auth.getProfile();
+    await Future.delayed(const Duration(milliseconds: 2200));
     if (!mounted) return;
-
-    if (!auth.isAuthenticated) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-      return;
-    }
-
-    // Route by KYC / onboarding status (shared with login & OTP screens).
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => vendorLandingScreen(auth.vendor)),
+      PageRouteBuilder(
+        pageBuilder: (_, a, _) => auth.isAuthenticated
+            ? vendorLandingScreen(auth.vendor)
+            : const LoginScreen(),
+        transitionsBuilder: (_, a, _, child) =>
+            FadeTransition(opacity: a, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
     );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _logoCtrl.dispose();
+    _textCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ScaleTransition(
-              scale: _scaleAnimation,
-              child: Container(
-                width: 110,
-                height: 110,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 8)),
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.headerGradient),
+        child: SafeArea(
+          child: Column(
+            children: [
+              const Spacer(flex: 2),
+
+              // Logo
+              ScaleTransition(
+                scale: _logoScale,
+                child: FadeTransition(
+                  opacity: _logoFade,
+                  child: Container(
+                    width: 110, height: 110,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(20),
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: Colors.white.withAlpha(60), width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(40),
+                          blurRadius: 30,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.local_laundry_service_rounded,
+                      size: 56,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // Brand name
+              SlideTransition(
+                position: _textSlide,
+                child: FadeTransition(
+                  opacity: _textFade,
+                  child: Column(
+                    children: [
+                      const Text('Spinovo',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.5)),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(20),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withAlpha(40)),
+                        ),
+                        child: Text('Vendor Partner',
+                            style: TextStyle(
+                                color: Colors.white.withAlpha(210),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 1.5)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const Spacer(flex: 2),
+
+              // Loading indicator
+              FadeTransition(
+                opacity: _textFade,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: 40, height: 3,
+                      child: LinearProgressIndicator(
+                        backgroundColor: Colors.white.withAlpha(40),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Loading your workspace...',
+                        style: TextStyle(
+                            color: Colors.white.withAlpha(150),
+                            fontSize: 12)),
                   ],
                 ),
-                child: const Icon(Icons.local_laundry_service_rounded, size: 60, color: AppColors.primary),
               ),
-            ),
-            const SizedBox(height: 24),
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: Column(
-                children: [
-                  const Text(
-                    AppStrings.appName,
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    AppStrings.tagline,
-                    style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.85)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 60),
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: const SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-              ),
-            ),
-          ],
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );

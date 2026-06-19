@@ -11,7 +11,6 @@ class AuthApi {
       headers: {'Content-Type': 'application/json; charset=UTF-8'},
       body: jsonEncode({'mobile': number}),
     );
-
     if (response.statusCode == 200) {
       return OtpModel.fromJson(jsonDecode(response.body));
     } else {
@@ -26,22 +25,25 @@ class AuthApi {
     String pincode,
     String address,
     String password,
-    String otp,
-  ) async {
+    String otp, {
+    String? fcmToken,
+  }) async {
+    final body = <String, dynamic>{
+      'name':     name,
+      'mobile':   mobile,
+      'cityName': cityName,
+      'pincode':  pincode,
+      'address':  address,
+      'password': password,
+      'otp':      otp,
+    };
+    if (fcmToken != null && fcmToken.isNotEmpty) body['fcmToken'] = fcmToken;
+
     final response = await http.post(
       Uri.parse(ApiConstants.signup),
       headers: {'Content-Type': 'application/json; charset=UTF-8'},
-      body: jsonEncode({
-        'name': name,
-        'mobile': mobile,
-        'cityName': cityName,
-        'pincode': pincode,
-        'address': address,
-        'password': password,
-        'otp': otp,
-      }),
+      body: jsonEncode(body),
     );
-    print(response.body);
     if (response.statusCode == 200) {
       return VendorModel.fromJson(jsonDecode(response.body));
     } else {
@@ -49,13 +51,22 @@ class AuthApi {
     }
   }
 
-  Future<VendorModel> userLogin(String mobileNo, String password) async {
+  Future<VendorModel> userLogin(
+    String mobileNo,
+    String password, {
+    String? fcmToken,
+  }) async {
+    final body = <String, dynamic>{
+      'mobile':   mobileNo,
+      'password': password,
+    };
+    if (fcmToken != null && fcmToken.isNotEmpty) body['fcmToken'] = fcmToken;
+
     final response = await http.post(
       Uri.parse(ApiConstants.login),
       headers: {'Content-Type': 'application/json; charset=UTF-8'},
-      body: jsonEncode({'mobile': mobileNo, 'password': password}),
+      body: jsonEncode(body),
     );
-    print('login api ddddd ${response.statusCode} ${response.body}');
     if (response.statusCode == 200) {
       return VendorModel.fromJson(jsonDecode(response.body));
     } else {

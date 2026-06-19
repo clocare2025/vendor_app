@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "673804462989",
+    "firebase_url": "https://spinovo-customer-app-default-rtdb.firebaseio.com",
+    "project_id": "spinovo-customer-app",
+    "storage_bucket": "spinovo-customer-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:673804462989:android:68b20b42832b2ec0dcebc4",
+        "android_client_info": {
+          "package_name": "com.spinovo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDaB0YP8KoQ3n_vxHzYHeVXK4ocT88eHY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:673804462989:android:cd290cdeaab28fd4dcebc4",
+        "android_client_info": {
+          "package_name": "com.spinovo.vpartners"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDaB0YP8KoQ3n_vxHzYHeVXK4ocT88eHY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

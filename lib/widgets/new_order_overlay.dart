@@ -41,10 +41,21 @@ class PendingOrderNotification {
 
 class NewOrderOverlay extends StatefulWidget {
   final Widget child;
-  const NewOrderOverlay({super.key, required this.child});
 
+  NewOrderOverlay({required this.child}) : super(key: _globalKey);
+
+  // Global key so any code in the app can push orders without needing BuildContext
+  static final GlobalKey<NewOrderOverlayState> _globalKey =
+      GlobalKey<NewOrderOverlayState>();
+
+  /// Push a new order notification from anywhere — FCM handler, bootstrap, etc.
+  static void push(PendingOrderNotification order) {
+    _globalKey.currentState?.addOrder(order);
+  }
+
+  /// Kept for backwards compat; push() is preferred.
   static NewOrderOverlayState? of(BuildContext context) =>
-      context.findAncestorStateOfType<NewOrderOverlayState>();
+      _globalKey.currentState;
 
   @override
   State<NewOrderOverlay> createState() => NewOrderOverlayState();
@@ -104,7 +115,10 @@ class _OrderQueueOverlay extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEF4444),
                       borderRadius: BorderRadius.circular(20),
@@ -127,14 +141,17 @@ class _OrderQueueOverlay extends StatelessWidget {
                   alignment: Alignment.bottomCenter,
                   children: reversed.asMap().entries.map((entry) {
                     final stackIdx = entry.key; // 0 = top (active) card
-                    final order    = entry.value;
-                    final offset   = stackIdx * 10.0;
-                    final scale    = 1.0 - stackIdx * 0.025;
-                    final opacity  = stackIdx == 0 ? 1.0 : (1.0 - stackIdx * 0.15).clamp(0.3, 1.0);
+                    final order = entry.value;
+                    final offset = stackIdx * 10.0;
+                    final scale = 1.0 - stackIdx * 0.025;
+                    final opacity = stackIdx == 0
+                        ? 1.0
+                        : (1.0 - stackIdx * 0.15).clamp(0.3, 1.0);
 
                     return Positioned(
                       bottom: offset,
-                      left: 0, right: 0,
+                      left: 0,
+                      right: 0,
                       child: Transform.scale(
                         scale: scale,
                         alignment: Alignment.bottomCenter,
@@ -179,15 +196,14 @@ class _OrderCard extends StatefulWidget {
   State<_OrderCard> createState() => _OrderCardState();
 }
 
-class _OrderCardState extends State<_OrderCard>
-    with TickerProviderStateMixin {
+class _OrderCardState extends State<_OrderCard> with TickerProviderStateMixin {
   // Slide-up entry animation
   late final AnimationController _slideCtrl;
-  late final Animation<Offset>   _slideAnim;
+  late final Animation<Offset> _slideAnim;
 
   // Pulse animation on the header dot
   late final AnimationController _pulseCtrl;
-  late final Animation<double>   _pulseAnim;
+  late final Animation<double> _pulseAnim;
 
   // Shake animation when urgent (< 60 s)
   late final AnimationController _shakeCtrl;
@@ -195,17 +211,19 @@ class _OrderCardState extends State<_OrderCard>
   Timer? _ticker;
   bool _accepting = false;
   bool _rejecting = false;
-  bool _didShake  = false;
+  bool _didShake = false;
 
   @override
   void initState() {
     super.initState();
 
     _slideCtrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 500),
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
     );
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 1.0), end: Offset.zero,
+      begin: const Offset(0, 1.0),
+      end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutCubic));
     _slideCtrl.forward();
 
@@ -213,12 +231,14 @@ class _OrderCardState extends State<_OrderCard>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseAnim = Tween<double>(
+      begin: 0.6,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _shakeCtrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 400),
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
     );
 
     // Tick every second to update timer
@@ -252,7 +272,7 @@ class _OrderCardState extends State<_OrderCard>
   Future<void> _accept() async {
     if (_accepting || _rejecting) return;
     setState(() => _accepting = true);
-    final auth  = context.read<AuthProvider>();
+    final auth = context.read<AuthProvider>();
     final orders = context.read<OrderProvider>();
     await orders.acceptOrder(auth.token ?? '', widget.order.processId);
     if (!mounted) return;
@@ -266,10 +286,13 @@ class _OrderCardState extends State<_OrderCard>
     final reason = await _showRejectSheet();
     if (!mounted || reason == null) return;
     setState(() => _rejecting = true);
-    final auth   = context.read<AuthProvider>();
+    final auth = context.read<AuthProvider>();
     final orders = context.read<OrderProvider>();
-    await orders.rejectOrder(auth.token ?? '', widget.order.processId,
-        reason: reason);
+    await orders.rejectOrder(
+      auth.token ?? '',
+      widget.order.processId,
+      reason: reason,
+    );
     if (!mounted) return;
     setState(() => _rejecting = false);
     await _slideCtrl.reverse();
@@ -288,10 +311,10 @@ class _OrderCardState extends State<_OrderCard>
 
   @override
   Widget build(BuildContext context) {
-    final left    = widget.order.timeLeft;
-    final urgent  = left.inSeconds < 60;
-    final mins    = left.inMinutes.toString().padLeft(2, '0');
-    final secs    = (left.inSeconds % 60).toString().padLeft(2, '0');
+    final left = widget.order.timeLeft;
+    final urgent = left.inSeconds < 60;
+    final mins = left.inMinutes.toString().padLeft(2, '0');
+    final secs = (left.inSeconds % 60).toString().padLeft(2, '0');
 
     return SlideTransition(
       position: _slideAnim,
@@ -320,10 +343,10 @@ class _OrderCardState extends State<_OrderCard>
               children: [
                 // ── Header ───────────────────────────────────────────────────
                 _CardHeader(
-                  order:     widget.order,
-                  urgent:    urgent,
-                  mins:      mins,
-                  secs:      secs,
+                  order: widget.order,
+                  urgent: urgent,
+                  mins: mins,
+                  secs: secs,
                   pulseAnim: _pulseAnim,
                 ),
 
@@ -332,37 +355,53 @@ class _OrderCardState extends State<_OrderCard>
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                   child: Column(
                     children: [
-                      Row(children: [
-                        Expanded(child: _InfoTile(
-                          icon: Icons.receipt_long_outlined,
-                          label: 'Order No.',
-                          value: widget.order.orderNumber.isNotEmpty
-                              ? '#${widget.order.orderNumber}' : '—',
-                        )),
-                        const SizedBox(width: 10),
-                        Expanded(child: _InfoTile(
-                          icon: Icons.dry_cleaning_outlined,
-                          label: 'Service',
-                          value: widget.order.service.isNotEmpty
-                              ? widget.order.service : '—',
-                        )),
-                      ]),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _InfoTile(
+                              icon: Icons.receipt_long_outlined,
+                              label: 'Order No.',
+                              value: widget.order.orderNumber.isNotEmpty
+                                  ? '#${widget.order.orderNumber}'
+                                  : '—',
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _InfoTile(
+                              icon: Icons.dry_cleaning_outlined,
+                              label: 'Service',
+                              value: widget.order.service.isNotEmpty
+                                  ? widget.order.service
+                                  : '—',
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 10),
-                      Row(children: [
-                        Expanded(child: _InfoTile(
-                          icon: Icons.calendar_today_outlined,
-                          label: 'Pickup Date',
-                          value: widget.order.pickupDate.isNotEmpty
-                              ? widget.order.pickupDate : '—',
-                        )),
-                        const SizedBox(width: 10),
-                        Expanded(child: _InfoTile(
-                          icon: Icons.access_time_rounded,
-                          label: 'Pickup Time',
-                          value: widget.order.pickupTime.isNotEmpty
-                              ? widget.order.pickupTime : '—',
-                        )),
-                      ]),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _InfoTile(
+                              icon: Icons.calendar_today_outlined,
+                              label: 'Pickup Date',
+                              value: widget.order.pickupDate.isNotEmpty
+                                  ? widget.order.pickupDate
+                                  : '—',
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _InfoTile(
+                              icon: Icons.access_time_rounded,
+                              label: 'Pickup Time',
+                              value: widget.order.pickupTime.isNotEmpty
+                                  ? widget.order.pickupTime
+                                  : '—',
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -373,7 +412,9 @@ class _OrderCardState extends State<_OrderCard>
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFEF2F2),
                         borderRadius: BorderRadius.circular(10),
@@ -381,8 +422,11 @@ class _OrderCardState extends State<_OrderCard>
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded,
-                              color: Color(0xFFDC2626), size: 16),
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Color(0xFFDC2626),
+                            size: 16,
+                          ),
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -407,27 +451,36 @@ class _OrderCardState extends State<_OrderCard>
                       // Reject
                       Expanded(
                         child: OutlinedButton(
-                          onPressed:
-                              (_rejecting || _accepting) ? null : _reject,
+                          onPressed: (_rejecting || _accepting)
+                              ? null
+                              : _reject,
                           style: OutlinedButton.styleFrom(
                             foregroundColor: const Color(0xFFEF4444),
                             side: const BorderSide(
-                                color: Color(0xFFEF4444), width: 1.5),
+                              color: Color(0xFFEF4444),
+                              width: 1.5,
+                            ),
                             padding: const EdgeInsets.symmetric(vertical: 15),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                           child: _rejecting
                               ? const SizedBox(
-                                  height: 18, width: 18,
+                                  height: 18,
+                                  width: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: Color(0xFFEF4444),
-                                  ))
-                              : const Text('Decline',
+                                  ),
+                                )
+                              : const Text(
+                                  'Decline',
                                   style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15)),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -435,25 +488,34 @@ class _OrderCardState extends State<_OrderCard>
                       Expanded(
                         flex: 2,
                         child: ElevatedButton(
-                          onPressed:
-                              (_accepting || _rejecting) ? null : _accept,
+                          onPressed: (_accepting || _rejecting)
+                              ? null
+                              : _accept,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF16A34A),
                             foregroundColor: Colors.white,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(vertical: 15),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                           child: _accepting
                               ? const SizedBox(
-                                  height: 18, width: 18,
+                                  height: 18,
+                                  width: 18,
                                   child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                              : const Text('Accept Order',
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Accept Order',
                                   style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15)),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -548,9 +610,7 @@ class _CardHeader extends StatelessWidget {
                     Text(
                       '$mins:$secs',
                       style: TextStyle(
-                        color: urgent
-                            ? const Color(0xFFFCA5A5)
-                            : Colors.white,
+                        color: urgent ? const Color(0xFFFCA5A5) : Colors.white,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -584,14 +644,15 @@ class _RingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
     final cy = size.height / 2;
-    final r  = size.width / 2 - 4;
+    final r = size.width / 2 - 4;
 
     // Track
     canvas.drawCircle(
-      Offset(cx, cy), r,
+      Offset(cx, cy),
+      r,
       Paint()
-        ..color  = Colors.white.withAlpha(40)
-        ..style  = PaintingStyle.stroke
+        ..color = Colors.white.withAlpha(40)
+        ..style = PaintingStyle.stroke
         ..strokeWidth = 3.5,
     );
 
@@ -602,10 +663,10 @@ class _RingPainter extends CustomPainter {
       2 * pi * progress,
       false,
       Paint()
-        ..color      = urgent ? const Color(0xFFFCA5A5) : const Color(0xFF22C55E)
-        ..style      = PaintingStyle.stroke
+        ..color = urgent ? const Color(0xFFFCA5A5) : const Color(0xFF22C55E)
+        ..style = PaintingStyle.stroke
         ..strokeWidth = 3.5
-        ..strokeCap  = StrokeCap.round,
+        ..strokeCap = StrokeCap.round,
     );
   }
 
@@ -620,7 +681,11 @@ class _InfoTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  const _InfoTile({required this.icon, required this.label, required this.value});
+  const _InfoTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -634,21 +699,27 @@ class _InfoTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(icon, size: 12, color: AppColors.textHint),
-            const SizedBox(width: 4),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 10, color: AppColors.textHint)),
-          ]),
+          Row(
+            children: [
+              Icon(icon, size: 12, color: AppColors.textHint),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 10, color: AppColors.textHint),
+              ),
+            ],
+          ),
           const SizedBox(height: 5),
-          Text(value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -690,71 +761,93 @@ class _RejectSheet extends StatefulWidget {
 
 class _RejectSheetState extends State<_RejectSheet> {
   static const _reasons = [
-    'Out of service area',
-    'Capacity full',
-    'Technical issue',
-    'Will be unavailable at pickup time',
+    'Too many quantities',
+    'Not enough time to complete',
+    'Unable to process the order',
+    'Unable to pick up this order',
+    'Other',
   ];
   final _ctrl = TextEditingController();
   String? _selected;
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+        20,
+        20,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Reason for declining',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const Text(
+            'Reason for declining',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 14),
-          ..._reasons.map((r) => GestureDetector(
-            onTap: () {
-              setState(() { _selected = r; _ctrl.text = r; });
-            },
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: _selected == r
-                    ? const Color(0xFFFEF2F2)
-                    : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
+          ..._reasons.map(
+            (r) => GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selected = r;
+                  _ctrl.text = r;
+                });
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
                   color: _selected == r
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFFE2E8F0),
+                      ? const Color(0xFFFEF2F2)
+                      : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _selected == r
+                        ? const Color(0xFFEF4444)
+                        : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _selected == r
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      size: 16,
+                      color: _selected == r
+                          ? const Color(0xFFEF4444)
+                          : AppColors.textHint,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      r,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: _selected == r
+                            ? const Color(0xFFDC2626)
+                            : AppColors.textPrimary,
+                        fontWeight: _selected == r
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(children: [
-                Icon(
-                  _selected == r
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_unchecked,
-                  size: 16,
-                  color: _selected == r
-                      ? const Color(0xFFEF4444)
-                      : AppColors.textHint,
-                ),
-                const SizedBox(width: 10),
-                Text(r,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _selected == r
-                          ? const Color(0xFFDC2626)
-                          : AppColors.textPrimary,
-                      fontWeight: _selected == r
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                    )),
-              ]),
             ),
-          )),
+          ),
           const SizedBox(height: 4),
           TextField(
             controller: _ctrl,
@@ -763,9 +856,12 @@ class _RejectSheetState extends State<_RejectSheet> {
               hintText: 'Other reason…',
               hintStyle: const TextStyle(color: AppColors.textHint),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
               contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14, vertical: 12),
+                horizontal: 14,
+                vertical: 12,
+              ),
               isDense: true,
             ),
           ),
@@ -778,15 +874,19 @@ class _RejectSheetState extends State<_RejectSheet> {
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () {
                 final reason = _ctrl.text.trim();
-                Navigator.of(context).pop(
-                    reason.isNotEmpty ? reason : 'Vendor declined');
+                Navigator.of(
+                  context,
+                ).pop(reason.isNotEmpty ? reason : 'Vendor declined');
               },
-              child: const Text('Confirm Decline',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              child: const Text(
+                'Confirm Decline',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
             ),
           ),
         ],
