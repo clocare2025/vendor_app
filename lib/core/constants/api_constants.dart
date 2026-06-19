@@ -9,10 +9,22 @@ class ApiConstants {
   static const String _vendorBase = '$baseUrl/api/vendor/v1';
 
   // Auth
-  static const String signup = '$_vendorBase/auth/signup';
-  static const String login = '$_vendorBase/auth/login';
-  static const String sendOtp = '$_vendorBase/auth/send-otp';
-  static const String profile = '$_vendorBase/profile';
+  static const String signup     = '$_vendorBase/auth/signup';
+  static const String login      = '$_vendorBase/auth/login';
+  static const String sendOtp    = '$_vendorBase/auth/send-otp';
+  static const String fcmToken   = '$_vendorBase/auth/fcm-token';
+  static const String profile    = '$_vendorBase/profile';
+  static const String address    = '$_vendorBase/address';
+
+  // Online / Offline status
+  static const String status = '$_vendorBase/status';
+
+  // Bank details
+  static const String bankDetails = '$_vendorBase/bank-details';
+  static String bankDetailById(String id) => '$_vendorBase/bank-details/$id';
+
+  // Earnings
+  static String earnings(String period) => '$_vendorBase/earnings?period=$period';
 
   // KYC
   static const String kycSubmit = '$_vendorBase/kyc/submit';

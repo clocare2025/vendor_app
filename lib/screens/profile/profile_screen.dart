@@ -6,6 +6,9 @@ import '../../models/vendor_model.dart';
 import '../../providers/auth_provider.dart';
 import '../auth/login_screen.dart';
 import '../home/my_services_screen.dart';
+import 'bank_details_screen.dart';
+import 'earnings_screen.dart';
+import 'profile_edit_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -353,30 +356,36 @@ class ProfileScreen extends StatelessWidget {
                       context,
                       icon: Icons.edit_outlined,
                       title: AppStrings.editProfile,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ProfileEditScreen()),
+                      ),
                     ),
                     const Divider(height: 1),
                     _menuTile(
                       context,
                       icon: Icons.local_laundry_service_outlined,
                       title: AppStrings.services,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const MyServicesScreen()),
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    _menuTile(
+                      context,
+                      icon: Icons.account_balance_outlined,
+                      title: 'Bank Details',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const BankDetailsScreen()),
+                      ),
                     ),
                     const Divider(height: 1),
                     _menuTile(
                       context,
                       icon: Icons.account_balance_wallet_outlined,
                       title: AppStrings.earnings,
-                    ),
-                    const Divider(height: 1),
-                    _menuTile(
-                      context,
-                      icon: Icons.settings_outlined,
-                      title: AppStrings.settings,
-                    ),
-                    const Divider(height: 1),
-                    _menuTile(
-                      context,
-                      icon: Icons.help_outline,
-                      title: AppStrings.help,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const EarningsScreen()),
+                      ),
                     ),
                   ],
                 ),

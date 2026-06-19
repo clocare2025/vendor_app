@@ -6,6 +6,7 @@ import 'package:vender_app/api/auth_api.dart';
 import 'package:vender_app/core/constants/api_constants.dart';
 import 'package:vender_app/models/otp_model.dart';
 import 'package:vender_app/models/vendor_model.dart';
+import 'package:vender_app/services/notification_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthApi _authApi = AuthApi();
@@ -65,6 +66,8 @@ class AuthProvider with ChangeNotifier {
         _token = _vendor!.accessToken;
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(AppConstants.token, _token!);
+        // Upload FCM token immediately so the vendor can receive notifications
+        NotificationService.instance.uploadToken(_token!).catchError((_) {});
         return response;
       } else {
         _errorMessage = response.msg ?? 'Login failed';
@@ -149,6 +152,7 @@ class AuthProvider with ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(AppConstants.token, _token!);
         _pendingSignup = null;
+        NotificationService.instance.uploadToken(_token!).catchError((_) {});
         return true;
       } else {
         _errorMessage = response.msg ?? 'Registration failed';

@@ -42,6 +42,34 @@ class Data {
   }
 }
 
+class VendorAddress {
+  final String street;
+  final String city;
+  final String pincode;
+  final String state;
+
+  const VendorAddress({
+    this.street = '',
+    this.city = '',
+    this.pincode = '',
+    this.state = '',
+  });
+
+  factory VendorAddress.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const VendorAddress();
+    return VendorAddress(
+      street:  json['street']?.toString()  ?? '',
+      city:    json['city']?.toString()    ?? '',
+      pincode: json['pincode']?.toString() ?? '',
+      state:   json['state']?.toString()   ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'street': street, 'city': city, 'pincode': pincode, 'state': state,
+  };
+}
+
 class Vendor {
   final String id;
   final String name;
@@ -78,6 +106,10 @@ class Vendor {
   final bool canStreamIroning;
   final String registrationStatus;
   final List<dynamic> bankDetails;
+  final bool bankDetailsApproved;
+  final bool isOnline;
+  final VendorAddress homeAddress;
+  final VendorAddress businessAddress;
   final String createdAt;
   final String updatedAt;
 
@@ -123,6 +155,10 @@ class Vendor {
     this.canStreamIroning = false,
     this.registrationStatus = '',
     this.bankDetails = const [],
+    this.bankDetailsApproved = false,
+    this.isOnline = false,
+    this.homeAddress = const VendorAddress(),
+    this.businessAddress = const VendorAddress(),
     this.createdAt = '',
     this.updatedAt = '',
     this.kycStatus = 'not_submitted',
@@ -180,6 +216,10 @@ class Vendor {
       canStreamIroning: _asBool(json['can_stream_ironing']),
       registrationStatus: json['registrationStatus']?.toString() ?? '',
       bankDetails: List<dynamic>.from(json['bankDetails'] ?? const []),
+      bankDetailsApproved: _asBool(json['bankDetailsApproved']),
+      isOnline: _asBool(json['isOnline']),
+      homeAddress: VendorAddress.fromJson(json['homeAddress'] as Map<String, dynamic>?),
+      businessAddress: VendorAddress.fromJson(json['businessAddress'] as Map<String, dynamic>?),
       createdAt: json['createdAt']?.toString() ?? '',
       updatedAt: json['updatedAt']?.toString() ?? '',
       kycStatus: json['kycStatus']?.toString() ?? 'not_submitted',
@@ -228,6 +268,10 @@ class Vendor {
       'can_stream_ironing': canStreamIroning,
       'registrationStatus': registrationStatus,
       'bankDetails': bankDetails,
+      'bankDetailsApproved': bankDetailsApproved,
+      'isOnline': isOnline,
+      'homeAddress': homeAddress.toJson(),
+      'businessAddress': businessAddress.toJson(),
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };
