@@ -14,7 +14,8 @@ class InwardOtpScreen extends StatefulWidget {
   final String processId;
   final String orderNumber;
   final String service;
-  final String initialOtp; // returned directly from the complete-processing call
+  final String
+  initialOtp; // returned directly from the complete-processing call
 
   const InwardOtpScreen({
     super.key,
@@ -49,12 +50,16 @@ class _InwardOtpScreenState extends State<InwardOtpScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.9, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+    _pulseAnim = Tween<double>(
+      begin: 0.9,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     // Poll every 10 s to check if OTP was verified by supervisor
-    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) => _checkVerified());
+    _pollTimer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _checkVerified(),
+    );
   }
 
   @override
@@ -119,13 +124,13 @@ class _InwardOtpScreenState extends State<InwardOtpScreen>
       appBar: AppBar(
         backgroundColor: AppColors.primaryGrad2,
         foregroundColor: Colors.white,
-        title: const Text('Return to Warehouse',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text(
+          'Return to Warehouse',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         elevation: 0,
       ),
-      body: SafeArea(
-        child: _verified ? _verifiedView() : _otpView(),
-      ),
+      body: SafeArea(child: _verified ? _verifiedView() : _otpView()),
     );
   }
 
@@ -145,23 +150,30 @@ class _InwardOtpScreenState extends State<InwardOtpScreen>
             ),
             child: Column(
               children: [
-                const Icon(Icons.warehouse_outlined,
-                    color: Colors.white, size: 40),
+                const Icon(
+                  Icons.warehouse_outlined,
+                  color: Colors.white,
+                  size: 40,
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   'Show this OTP to your supervisor',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Supervisor will scan the code in the admin panel to confirm garments received at warehouse.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: Colors.white.withAlpha(180), fontSize: 13, height: 1.5),
+                    color: Colors.white.withAlpha(180),
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
                 ),
               ],
             ),
@@ -186,30 +198,40 @@ class _InwardOtpScreenState extends State<InwardOtpScreen>
                       Text(
                         '#${widget.orderNumber.isNotEmpty ? widget.orderNumber : widget.processId.substring(0, 8).toUpperCase()}',
                         style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            color: AppColors.textPrimary),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: 2),
-                      Text(widget.service,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textSecondary)),
+                      Text(
+                        widget.service,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF7ED),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: AppColors.newOrder.withAlpha(60)),
                   ),
-                  child: const Text('Processing Done',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.newOrder)),
+                  child: const Text(
+                    'Processing Done',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.newOrder,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -218,24 +240,27 @@ class _InwardOtpScreenState extends State<InwardOtpScreen>
           const SizedBox(height: 32),
 
           // OTP display
-          const Text('One-Time Password',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary)),
+          const Text(
+            'One-Time Password',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
           const SizedBox(height: 12),
 
           AnimatedBuilder(
             animation: _pulseAnim,
-            builder: (_, child) => Transform.scale(
-              scale: _pulseAnim.value,
-              child: child,
-            ),
+            builder: (_, child) =>
+                Transform.scale(scale: _pulseAnim.value, child: child),
             child: GestureDetector(
               onTap: _copyOtp,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 32, vertical: 20),
+                  horizontal: 32,
+                  vertical: 20,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primaryGrad2,
                   borderRadius: BorderRadius.circular(20),
@@ -261,8 +286,11 @@ class _InwardOtpScreenState extends State<InwardOtpScreen>
                       ),
                     ),
                     const SizedBox(width: 16),
-                    const Icon(Icons.copy_rounded,
-                        color: Colors.white54, size: 20),
+                    const Icon(
+                      Icons.copy_rounded,
+                      color: Colors.white54,
+                      size: 20,
+                    ),
                   ],
                 ),
               ),
@@ -270,8 +298,10 @@ class _InwardOtpScreenState extends State<InwardOtpScreen>
           ),
 
           const SizedBox(height: 12),
-          const Text('Tap to copy',
-              style: TextStyle(fontSize: 11, color: AppColors.textHint)),
+          const Text(
+            'Tap to copy',
+            style: TextStyle(fontSize: 11, color: AppColors.textHint),
+          ),
 
           const SizedBox(height: 36),
 
@@ -286,20 +316,24 @@ class _InwardOtpScreenState extends State<InwardOtpScreen>
             child: Row(
               children: [
                 const SizedBox(
-                  width: 18, height: 18,
+                  width: 18,
+                  height: 18,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                          Color(0xFFF59E0B))),
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFF59E0B),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
                     'Waiting for supervisor to verify OTP in admin panel…',
                     style: TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF92400E),
-                        height: 1.4),
+                      fontSize: 13,
+                      color: Color(0xFF92400E),
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
@@ -313,12 +347,15 @@ class _InwardOtpScreenState extends State<InwardOtpScreen>
             onPressed: _loading ? null : _refreshOtp,
             icon: _loading
                 ? const SizedBox(
-                    width: 14, height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 1.5))
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 1.5),
+                  )
                 : const Icon(Icons.refresh_rounded, size: 16),
             label: const Text('Refresh OTP'),
             style: TextButton.styleFrom(
-                foregroundColor: AppColors.textSecondary),
+              foregroundColor: AppColors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -338,42 +375,52 @@ class _InwardOtpScreenState extends State<InwardOtpScreen>
               shape: BoxShape.circle,
               border: Border.all(color: const Color(0xFFBBF7D0), width: 2),
             ),
-            child: const Icon(Icons.check_circle_rounded,
-                size: 64, color: Color(0xFF16A34A)),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              size: 64,
+              color: Color(0xFF16A34A),
+            ),
           ),
           const SizedBox(height: 28),
-          const Text('Garments Received!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF15803D),
-                  letterSpacing: -0.3)),
+          const Text(
+            'Garments Received!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF15803D),
+              letterSpacing: -0.3,
+            ),
+          ),
           const SizedBox(height: 12),
           const Text(
             'Supervisor has verified the OTP. Garments are confirmed back in the warehouse.',
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.5),
+              fontSize: 14,
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
           ),
           const SizedBox(height: 40),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () => Navigator.of(context).popUntil(
-                  (route) => route.isFirst || route.settings.name == '/main'),
+                (route) => route.isFirst || route.settings.name == '/main',
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF16A34A),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              child: const Text('Back to Orders',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Back to Orders',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],

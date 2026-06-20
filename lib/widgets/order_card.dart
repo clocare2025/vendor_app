@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../core/constants/app_colors.dart';
@@ -10,6 +11,16 @@ class OrderCard extends StatelessWidget {
   const OrderCard({super.key, required this.order, this.onTap});
 
   _StatusTheme get _theme {
+    // inward_done = OTP verified, garments returned → show as Completed
+    if (order.isInwardDone) {
+      return _StatusTheme('Completed', AppColors.accent,
+          const Color(0xFFF0FDF4), Icons.task_alt_rounded);
+    }
+    // status=5: processing done, waiting for supervisor OTP scan
+    if (order.isInwardPending) {
+      return _StatusTheme('OTP Pending', const Color(0xFFF59E0B),
+          const Color(0xFFFFFBEB), Icons.key_rounded);
+    }
     switch (order.status) {
       case 'assigned':
         return _StatusTheme('New Order', AppColors.newOrder,
@@ -37,9 +48,7 @@ class OrderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t         = _theme;
-    final remaining = order.timerRunning ? order.remainingTime : null;
-    final isOverdue = remaining != null && remaining.isNegative;
+    final t = _theme;
 
     return Material(
       color: AppColors.surface,
@@ -53,10 +62,9 @@ class OrderCard extends StatelessWidget {
             border: Border.all(color: AppColors.divider),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(8),
-                blurRadius: 12,
-                offset: const Offset(0, 3),
-              ),
+                  color: Colors.black.withAlpha(8),
+                  blurRadius: 12,
+                  offset: const Offset(0, 3)),
             ],
           ),
           child: ClipRRect(
@@ -65,65 +73,61 @@ class OrderCard extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ── Coloured left border ────────────────────────────────
+                  // Coloured left border
                   Container(width: 5, color: t.color),
 
-                  // ── Card body ───────────────────────────────────────────
+                  // Card body
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Top row: order number + status badge
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      order.orderNumber.isNotEmpty
-                                          ? '#${order.orderNumber}'
-                                          : '#${order.id.substring(0, 8).toUpperCase()}',
+                          // Order number + status badge
+                          Row(children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    order.orderNumber.isNotEmpty
+                                        ? '#${order.orderNumber}'
+                                        : '#${order.id.substring(0, 8).toUpperCase()}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 15,
+                                        color: AppColors.textPrimary,
+                                        letterSpacing: -0.2),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(order.serviceName,
                                       style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 15,
-                                          color: AppColors.textPrimary,
-                                          letterSpacing: -0.2),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(order.serviceName,
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.textSecondary)),
-                                  ],
-                                ),
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary)),
+                                ],
                               ),
-                              _Badge(theme: t),
-                            ],
-                          ),
+                            ),
+                            _Badge(theme: t),
+                          ]),
                           const SizedBox(height: 12),
 
-                          // Earnings + date row
-                          Row(
-                            children: [
-                              _InfoChip(
-                                icon: Icons.currency_rupee_rounded,
-                                label: '₹${order.vendorAmount.toStringAsFixed(0)}',
-                                color: AppColors.accent,
-                                bg: const Color(0xFFF0FDF4),
-                              ),
-                              const SizedBox(width: 8),
-                              _InfoChip(
-                                icon: Icons.schedule_rounded,
-                                label: DateFormat('MMM d, h:mm a')
-                                    .format(order.assignedAt.toLocal()),
-                                color: AppColors.textSecondary,
-                                bg: AppColors.background,
-                              ),
-                            ],
-                          ),
+                          // Earnings + date
+                          Row(children: [
+                            _InfoChip(
+                              icon: Icons.currency_rupee_rounded,
+                              label: '₹${order.vendorAmount.toStringAsFixed(0)}',
+                              color: AppColors.accent,
+                              bg: const Color(0xFFF0FDF4),
+                            ),
+                            const SizedBox(width: 8),
+                            _InfoChip(
+                              icon: Icons.schedule_rounded,
+                              label: DateFormat('MMM d, h:mm a')
+                                  .format(order.assignedAt.toLocal()),
+                              color: AppColors.textSecondary,
+                              bg: AppColors.background,
+                            ),
+                          ]),
 
                           // Pickup slot
                           if (order.pickupAt != null ||
@@ -137,11 +141,20 @@ class OrderCard extends StatelessWidget {
                             ),
                           ],
 
-                          // Service timer
-                          if (remaining != null) ...[
+                          // ── Service deadline timer (self-ticking) ───────────
+                          if (order.timerRunning &&
+                              order.serviceDeadline != null) ...[
                             const SizedBox(height: 8),
-                            _TimerBar(remaining: remaining, isOverdue: isOverdue,
-                                durationHrs: order.serviceDurationHours),
+                            _LiveTimerBar(
+                              deadline:    order.serviceDeadline!,
+                              durationHrs: order.serviceDurationHours,
+                            ),
+                          ],
+
+                          // ── Warehouse received banner ────────────────────────
+                          if (order.isInwardDone) ...[
+                            const SizedBox(height: 10),
+                            _WarehouseReceivedBanner(),
                           ],
 
                           // Action hint
@@ -185,8 +198,13 @@ class OrderCard extends StatelessWidget {
           const Color(0xFF0369A1), const Color(0xFFE0F2FE));
     }
     if (order.isProcessing) {
-      return _HintData(Icons.task_alt_rounded, 'Tap to mark Completed',
-          AppColors.accent, const Color(0xFFF0FDF4));
+      return _HintData(Icons.warehouse_outlined, 'Tap to Return to Warehouse',
+          const Color(0xFF1E40AF), const Color(0xFFEFF6FF));
+    }
+    if (order.isInwardPending) {
+      return _HintData(Icons.pending_outlined,
+          'Waiting for supervisor to scan OTP',
+          const Color(0xFFF59E0B), const Color(0xFFFFFBEB));
     }
     return null;
   }
@@ -242,10 +260,8 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -253,64 +269,77 @@ class _InfoChip extends StatelessWidget {
           const SizedBox(width: 5),
           Text(label,
               style: TextStyle(
-                  fontSize: 12,
-                  color: color,
-                  fontWeight: FontWeight.w500)),
+                  fontSize: 12, color: color, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 }
 
-// ── Timer progress bar ────────────────────────────────────────────────────────
+// ── Self-ticking timer bar ────────────────────────────────────────────────────
+// StatefulWidget with its own Timer so it updates every second independently.
 
-class _TimerBar extends StatelessWidget {
-  final Duration remaining;
-  final bool isOverdue;
+class _LiveTimerBar extends StatefulWidget {
+  final DateTime deadline;
   final int durationHrs;
 
-  const _TimerBar({
-    required this.remaining,
-    required this.isOverdue,
-    required this.durationHrs,
-  });
+  const _LiveTimerBar({required this.deadline, required this.durationHrs});
+
+  @override
+  State<_LiveTimerBar> createState() => _LiveTimerBarState();
+}
+
+class _LiveTimerBarState extends State<_LiveTimerBar> {
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final abs  = remaining.abs();
-    final hh   = abs.inHours.toString().padLeft(2, '0');
-    final mm   = (abs.inMinutes % 60).toString().padLeft(2, '0');
-    final ss   = (abs.inSeconds % 60).toString().padLeft(2, '0');
-    final text = isOverdue ? 'Overdue  -$hh:$mm:$ss' : '$hh:$mm:$ss remaining';
+    final remaining = widget.deadline.difference(DateTime.now());
+    final isOverdue = remaining.isNegative;
+    final abs       = remaining.abs();
+    final hh  = abs.inHours.toString().padLeft(2, '0');
+    final mm  = (abs.inMinutes % 60).toString().padLeft(2, '0');
+    final ss  = (abs.inSeconds % 60).toString().padLeft(2, '0');
+    final txt = isOverdue ? 'Overdue  -$hh:$mm:$ss' : '$hh:$mm:$ss remaining';
 
-    final Color barColor = isOverdue
+    final Color bar = isOverdue
         ? AppColors.error
         : remaining.inMinutes < 60
             ? AppColors.warning
             : AppColors.accent;
 
-    final double progress = durationHrs > 0
-        ? (1.0 - (remaining.inSeconds / (durationHrs * 3600))).clamp(0.0, 1.0)
+    final double progress = widget.durationHrs > 0
+        ? (1.0 - (remaining.inSeconds / (widget.durationHrs * 3600)))
+            .clamp(0.0, 1.0)
         : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(
-              isOverdue ? Icons.warning_amber_rounded : Icons.timer_outlined,
-              size: 13,
-              color: barColor,
-            ),
-            const SizedBox(width: 5),
-            Text(text,
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: barColor)),
-          ],
-        ),
+        Row(children: [
+          Icon(isOverdue ? Icons.warning_amber_rounded : Icons.timer_outlined,
+              size: 13, color: bar),
+          const SizedBox(width: 5),
+          Text(txt,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: bar)),
+        ]),
         const SizedBox(height: 5),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
@@ -318,10 +347,40 @@ class _TimerBar extends StatelessWidget {
             value: progress,
             minHeight: 4,
             backgroundColor: AppColors.divider,
-            valueColor: AlwaysStoppedAnimation<Color>(barColor),
+            valueColor: AlwaysStoppedAnimation<Color>(bar),
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Warehouse received banner ─────────────────────────────────────────────────
+
+class _WarehouseReceivedBanner extends StatelessWidget {
+  const _WarehouseReceivedBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFBBF7D0)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 18),
+          SizedBox(width: 8),
+          Text('Garments received at warehouse ✅',
+              style: TextStyle(
+                  color: Color(0xFF15803D),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
@@ -346,12 +405,13 @@ class _ActionHint extends StatelessWidget {
         children: [
           Icon(hint.icon, size: 14, color: hint.color),
           const SizedBox(width: 7),
-          Text(hint.text,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: hint.color)),
-          const Spacer(),
+          Expanded(
+            child: Text(hint.text,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: hint.color)),
+          ),
           Icon(Icons.arrow_forward_ios_rounded,
               size: 10, color: hint.color.withAlpha(150)),
         ],

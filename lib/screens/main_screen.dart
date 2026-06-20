@@ -168,13 +168,10 @@ class _MainScreenState extends State<MainScreen>
           ],
         );
       case 2:
-        return Text(
-          auth.vendor?.name.isNotEmpty == true
-              ? auth.vendor!.name
-              : 'My Profile',
-          style: const TextStyle(
+        return const Text(
+          'Profile',
+          style: TextStyle(
               color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
-          overflow: TextOverflow.ellipsis,
         );
       default:
         return const SizedBox.shrink();
