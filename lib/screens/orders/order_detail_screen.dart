@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../models/order_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/order_provider.dart';
+import 'inward_otp_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final OrderModel order;
@@ -46,7 +47,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case 'processing':
         return _BadgeStyle('Processing', const Color(0xFF0284C7), const Color(0xFFE0F2FE));
       case 'completed':
-        return _BadgeStyle('Completed', AppColors.statusCompleted, const Color(0xFFF0FDF4));
+        // Check inward OTP status via the order object — but badge method only has status string.
+        // Use 'completed' for both inward_pending and inward_done; detail screen shows the right CTA.
+        return _BadgeStyle('Return Pending', const Color(0xFFF59E0B), const Color(0xFFFFFBEB));
+      case 'inward_done':
+        return _BadgeStyle('Inward Done', AppColors.statusCompleted, const Color(0xFFF0FDF4));
       case 'rejected':
         return _BadgeStyle('Rejected', AppColors.error, const Color(0xFFFEF2F2));
       default:
@@ -184,17 +189,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<void> _complete(OrderModel o) async {
     final confirmed = await _confirm(
-      'Processing Completed',
-      'Confirm all garments have been processed and are ready for delivery.',
-      AppColors.statusCompleted,
+      'Return to Warehouse',
+      'Confirm processing is done. An OTP will be generated — show it to the supervisor to confirm garment return.',
+      const Color(0xFF1E40AF),
     );
     if (!confirmed || !mounted) return;
-    final p = context.read<OrderProvider>();
-    final token = context.read<AuthProvider>().token!;
-    final ok = await p.completeOrder(token, o.id);
+
+    final p     = context.read<OrderProvider>();
+    final auth  = context.read<AuthProvider>();
+    final token = auth.token!;
+    final nav   = Navigator.of(context);
+
+    final otp = await p.completeProcessingWithOtp(token, o.id);
     if (!mounted) return;
-    _snack(ok ? 'Order completed!' : (p.error ?? 'Failed'),
-        ok ? AppColors.statusCompleted : AppColors.error);
+
+    if (otp != null && otp.isNotEmpty) {
+      nav.push(MaterialPageRoute(
+        builder: (_) => InwardOtpScreen(
+          processId:   o.id,
+          orderNumber: o.orderNumber,
+          service:     o.serviceName,
+          initialOtp:  otp,
+        ),
+      ));
+    } else {
+      _snack(p.error ?? 'Failed to complete processing', AppColors.error);
+    }
   }
 
   void _snack(String msg, Color color) {
@@ -409,11 +429,12 @@ class _StatusBanner extends StatelessWidget {
   const _StatusBanner({required this.o, required this.badge});
 
   static const _steps = [
-    _Step('Assigned', 'assigned'),
-    _Step('Accepted', 'accepted'),
-    _Step('Picked Up', 'picked_up'),
+    _Step('Assigned',   'assigned'),
+    _Step('Accepted',   'accepted'),
+    _Step('Picked Up',  'picked_up'),
     _Step('Processing', 'processing'),
-    _Step('Completed', 'completed'),
+    _Step('Return',     'completed'),   // inward OTP stage
+    _Step('Warehouse',  'inward_done'), // OTP verified
   ];
 
   int get _currentIdx {
@@ -913,12 +934,40 @@ class _ActionButtons extends StatelessWidget {
       );
     }
 
-    if (o.isProcessing) {
+    if (o.isProcessing || (o.isPickedUp && !o.isAccepted)) {
       return _fullBtn(
-        icon: Icons.task_alt_rounded,
-        label: 'Processing Completed',
-        color: AppColors.statusCompleted,
+        icon: Icons.warehouse_outlined,
+        label: 'Done — Return to Warehouse',
+        color: const Color(0xFF1E40AF),
         onPressed: onComplete,
+      );
+    }
+
+    // Inward pending — show OTP is being waited on
+    if (o.isInwardPending) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFFDE68A)),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.hourglass_top_rounded,
+                color: Color(0xFFF59E0B), size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Waiting for supervisor OTP verification…',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF92400E)),
+              ),
+            ),
+          ],
+        ),
       );
     }
 

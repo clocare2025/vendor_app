@@ -10,4 +10,5 @@ class OrdersService {
   Future<void> pickupOrder(String token, String id) => _api.pickupOrder(token, id);
   Future<void> startProcessing(String token, String id) => _api.startProcessing(token, id);
   Future<void> completeOrder(String token, String id) => _api.completeOrder(token, id);
+  Future<String> completeProcessingWithOtp(String token, String id) => _api.completeProcessingWithOtp(token, id);
 }

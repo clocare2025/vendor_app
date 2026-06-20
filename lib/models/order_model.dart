@@ -62,6 +62,11 @@ class OrderModel {
   final List<OrderItem> items;
   final String? rejectReason;
 
+  // ── Vendor Inward OTP ─────────────────────────────────────────────────────────
+  // Present when status == 'completed' (process done; OTP awaiting supervisor scan)
+  final String? inwardOtp;
+  final bool inwardOtpVerified;
+
   const OrderModel({
     required this.id,
     required this.orderNumber,
@@ -84,26 +89,32 @@ class OrderModel {
     this.serviceDuration = '',
     this.items = const [],
     this.rejectReason,
+    this.inwardOtp,
+    this.inwardOtpVerified = false,
   });
 
   // ── Status helpers ──────────────────────────────────────────────────────────
-  bool get isAssigned => status == 'assigned';
-  bool get isAccepted => status == 'accepted';
-  bool get isPickedUp => status == 'picked_up';
-  bool get isProcessing => status == 'processing';
-  bool get isCompleted => status == 'completed';
-  bool get isRejected => status == 'rejected';
-  bool get isCancelled => status == 'cancelled';
+  bool get isAssigned    => status == 'assigned';
+  bool get isAccepted    => status == 'accepted';
+  bool get isPickedUp    => status == 'picked_up';
+  bool get isProcessing  => status == 'processing';
+  // status=5: vendor done processing, OTP generated, waiting for supervisor
+  bool get isInwardPending => status == 'completed' && !inwardOtpVerified;
+  // status=6: OTP verified, garments back in warehouse
+  bool get isInwardDone  => status == 'inward_done' || (status == 'completed' && inwardOtpVerified);
+  bool get isCompleted   => status == 'completed' || status == 'inward_done';
+  bool get isRejected    => status == 'rejected';
+  bool get isCancelled   => status == 'cancelled';
 
-  bool get canAccept => isAssigned;
-  bool get canReject => isAssigned;
-  bool get canPickup => isAccepted;
-  bool get canStartProcessing => isPickedUp;
-  bool get canComplete => isPickedUp || isProcessing;
+  bool get canAccept            => isAssigned;
+  bool get canReject            => isAssigned;
+  bool get canPickup            => isAccepted;
+  bool get canStartProcessing   => isPickedUp;
+  bool get canCompleteProcessing => isPickedUp || isProcessing;
 
   // Home screen helpers
   bool get isPending => isAssigned;
-  bool get isActive => isAccepted || isPickedUp || isProcessing;
+  bool get isActive  => isAccepted || isPickedUp || isProcessing || isInwardPending;
 
   // Timer helpers
   bool get timerRunning => isPickedUp || isProcessing;
@@ -137,7 +148,9 @@ class OrderModel {
       items: (json['items'] as List<dynamic>? ?? [])
           .map((e) => OrderItem.fromJson(e as Map<String, dynamic>))
           .toList(),
-      rejectReason: json['reject_reason']?.toString(),
+      rejectReason:      json['reject_reason']?.toString(),
+      inwardOtp:         json['inward_otp']?.toString(),
+      inwardOtpVerified: json['inward_otp_verified'] == true,
     );
   }
 
@@ -147,9 +160,12 @@ class OrderModel {
     return DateTime.tryParse(val.toString())?.toLocal();
   }
 
-  OrderModel copyWith({String? status, String? rejectReason,
-      DateTime? pickedUpAt, DateTime? serviceDeadline,
-      DateTime? processingStartedAt, DateTime? processingCompletedAt}) {
+  OrderModel copyWith({
+    String? status, String? rejectReason,
+    DateTime? pickedUpAt, DateTime? serviceDeadline,
+    DateTime? processingStartedAt, DateTime? processingCompletedAt,
+    String? inwardOtp, bool? inwardOtpVerified,
+  }) {
     return OrderModel(
       id: id,
       orderNumber: orderNumber,
@@ -172,6 +188,8 @@ class OrderModel {
       serviceDuration: serviceDuration,
       items: items,
       rejectReason: rejectReason ?? this.rejectReason,
+      inwardOtp: inwardOtp ?? this.inwardOtp,
+      inwardOtpVerified: inwardOtpVerified ?? this.inwardOtpVerified,
     );
   }
 }

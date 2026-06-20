@@ -142,6 +142,31 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  // ── Complete Processing + Generate Inward OTP ─────────────────────────────
+  // Returns the OTP string on success, null on failure.
+
+  Future<String?> completeProcessingWithOtp(String token, String id) async {
+    _isActing = true;
+    notifyListeners();
+    try {
+      final otp = await _service.completeProcessingWithOtp(token, id);
+      _patch(id, (o) => o.copyWith(
+            status: 'completed',
+            processingCompletedAt: DateTime.now(),
+            inwardOtp: otp,
+            inwardOtpVerified: false,
+          ));
+      return otp;
+    } catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return null;
+    } finally {
+      _isActing = false;
+      notifyListeners();
+    }
+  }
+
   // ── Complete ──────────────────────────────────────────────────────────────
 
   Future<bool> completeOrder(String token, String id) async {

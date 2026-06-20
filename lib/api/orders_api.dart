@@ -49,6 +49,20 @@ class OrdersApi {
   Future<void> completeOrder(String token, String orderId) =>
       _patch(token, ApiConstants.orderComplete(orderId));
 
+  /// Vendor marks processing done → backend generates 6-digit inward OTP.
+  /// Returns the OTP string to display on the InwardOtpScreen.
+  Future<String> completeProcessingWithOtp(String token, String orderId) async {
+    final res = await http.patch(
+      Uri.parse(ApiConstants.orderCompleteProcessing(orderId)),
+      headers: _headers(token),
+    );
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode == 200 && json['status'] == true) {
+      return json['data']?['inward_otp']?.toString() ?? '';
+    }
+    throw Exception(json['msg'] ?? 'Failed to complete processing');
+  }
+
   Future<void> _patch(String token, String url,
       {Map<String, dynamic>? body}) async {
     final res = await http.patch(

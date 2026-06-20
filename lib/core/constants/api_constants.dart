@@ -56,6 +56,10 @@ class ApiConstants {
   static String orderStartProcessing(String id) =>
       '$_vendorBase/orders/$id/start-processing';
   static String orderComplete(String id) => '$_vendorBase/orders/$id/complete';
+
+  // Vendor Inward — complete processing (generates OTP) + re-fetch OTP
+  static String orderCompleteProcessing(String id) => '$_vendorBase/orders/$id/complete-processing';
+  static String orderInwardOtp(String id)           => '$_vendorBase/orders/$id/inward-otp';
 }
 
 class AppConstants {
