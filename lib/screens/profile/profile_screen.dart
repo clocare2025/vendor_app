@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../models/vendor_model.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/status_provider.dart';
-import '../../widgets/online_toggle.dart';
 import '../auth/login_screen.dart';
 import '../home/my_services_screen.dart';
 import 'bank_details_screen.dart';
@@ -24,10 +21,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-    ));
   }
 
   Future<void> _confirmLogout() async {
@@ -63,179 +56,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final vendor    = context.watch<AuthProvider>().vendor;
-    final statusPvd = context.watch<StatusProvider>();
-    final auth      = context.read<AuthProvider>();
     final kycStatus = vendor?.kycStatus ?? 'not_submitted';
     final isActive  = vendor?.accountIsActive == true;
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          // ── Gradient SliverAppBar with vendor identity ─────────────────
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 180,
-            collapsedHeight: kToolbarHeight,
-            backgroundColor: AppColors.primaryGrad2,
-            automaticallyImplyLeading: false,
-            actions: [
-              OnlineToggle(statusPvd: statusPvd, token: auth.token ?? ''),
-            ],
-            flexibleSpace: LayoutBuilder(
-              builder: (ctx, constraints) {
-                final collapsed = constraints.maxHeight <=
-                    kToolbarHeight + MediaQuery.of(ctx).padding.top + 10;
-                return FlexibleSpaceBar(
-                  collapseMode: CollapseMode.parallax,
-                  titlePadding:
-                      const EdgeInsets.only(left: 20, bottom: 14),
-                  title: collapsed
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircleAvatar(
-                              radius: 14,
-                              backgroundColor:
-                                  Colors.white.withAlpha(40),
-                              child: Text(
-                                vendor?.name.isNotEmpty == true
-                                    ? vendor!.name[0].toUpperCase()
-                                    : 'V',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              vendor?.name.isNotEmpty == true
-                                  ? vendor!.name.split(' ').first
-                                  : 'Profile',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700),
-                            ),
-                          ],
-                        )
-                      : null,
-                  background: Container(
-                    decoration: const BoxDecoration(
-                        gradient: AppColors.headerGradient),
-                    child: SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 80, 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            // Avatar + name row
-                            Row(
-                              children: [
-                                // Avatar circle
-                                Container(
-                                  width: 64, height: 64,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white.withAlpha(25),
-                                    border: Border.all(
-                                        color: Colors.white.withAlpha(80),
-                                        width: 2),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      vendor?.name.isNotEmpty == true
-                                          ? vendor!.name[0].toUpperCase()
-                                          : 'V',
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        vendor?.name.isNotEmpty == true
-                                            ? vendor!.name
-                                            : 'Vendor',
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 19,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: -0.3),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        vendor?.mobile ?? '',
-                                        style: TextStyle(
-                                            color:
-                                                Colors.white.withAlpha(180),
-                                            fontSize: 13),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      // Account status pill
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: isActive
-                                              ? Colors.white.withAlpha(30)
-                                              : AppColors.warning
-                                                  .withAlpha(60),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          border: Border.all(
-                                              color: isActive
-                                                  ? Colors.white
-                                                      .withAlpha(60)
-                                                  : AppColors.warning
-                                                      .withAlpha(120)),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              isActive
-                                                  ? Icons.verified_rounded
-                                                  : Icons
-                                                      .hourglass_empty_rounded,
-                                              size: 12,
-                                              color: Colors.white,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              isActive
-                                                  ? 'Verified'
-                                                  : 'Pending Verification',
-                                              style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+    return CustomScrollView(
+      slivers: [
+          // ── Profile header card (gradient, scrollable) ─────────────────
+          SliverToBoxAdapter(
+            child: _ProfileHeader(vendor: vendor, isActive: isActive),
           ),
 
           // ── Content ─────────────────────────────────────────────────────
@@ -328,6 +156,108 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
               ]),
+            ),
+          ),
+        ],
+    );
+  }
+}
+
+// ── Profile header card ───────────────────────────────────────────────────────
+
+class _ProfileHeader extends StatelessWidget {
+  final Vendor? vendor;
+  final bool isActive;
+
+  const _ProfileHeader({required this.vendor, required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: AppColors.headerGradient,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryGrad1.withAlpha(60),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 64, height: 64,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withAlpha(25),
+              border: Border.all(color: Colors.white.withAlpha(70), width: 2),
+            ),
+            child: Center(
+              child: Text(
+                vendor?.name.isNotEmpty == true
+                    ? vendor!.name[0].toUpperCase()
+                    : 'V',
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vendor?.name.isNotEmpty == true ? vendor!.name : 'Vendor',
+                  style: const TextStyle(
+                      color: Colors.white, fontSize: 18,
+                      fontWeight: FontWeight.bold, letterSpacing: -0.3),
+                ),
+                if (vendor?.mobile.isNotEmpty == true) ...[
+                  const SizedBox(height: 3),
+                  Text(vendor!.mobile,
+                      style: TextStyle(
+                          color: Colors.white.withAlpha(180), fontSize: 13)),
+                ],
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? Colors.white.withAlpha(28)
+                        : AppColors.warning.withAlpha(60),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                        color: isActive
+                            ? Colors.white.withAlpha(60)
+                            : AppColors.warning.withAlpha(120)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isActive
+                            ? Icons.verified_rounded
+                            : Icons.hourglass_empty_rounded,
+                        size: 12, color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isActive ? 'Verified' : 'Pending Verification',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
