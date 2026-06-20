@@ -74,8 +74,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           sliver: SliverList(
             delegate: SliverChildListDelegate([
               // Stats row
-              _StatsCard(vendor: vendor),
-              const SizedBox(height: 16),
+              // _StatsCard(vendor: vendor),
+              // const SizedBox(height: 16),
 
               // KYC banner
               if (kycStatus != 'not_submitted')
