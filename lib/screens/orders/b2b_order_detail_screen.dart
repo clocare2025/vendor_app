@@ -6,18 +6,23 @@ import '../../core/constants/api_constants.dart';
 import '../../core/constants/app_colors.dart';
 import '../../models/order_model.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/order_provider.dart';
+import '../../providers/b2b_order_provider.dart';
 import '../../widgets/order_detail_widgets.dart';
 
-class OrderDetailScreen extends StatefulWidget {
+/// B2B counterpart of OrderDetailScreen — same layout/behavior, wired to
+/// B2bOrderProvider (separate provider backing the separate /v1/b2b-orders
+/// route family) instead of OrderProvider. Shares OrderStatusBanner /
+/// OrderTimerCard / OrderItemsTable / OrderActionButtons / OrderOtpBottomSheet
+/// with the retail screen via lib/widgets/order_detail_widgets.dart.
+class B2bOrderDetailScreen extends StatefulWidget {
   final OrderModel order;
-  const OrderDetailScreen({super.key, required this.order});
+  const B2bOrderDetailScreen({super.key, required this.order});
 
   @override
-  State<OrderDetailScreen> createState() => _OrderDetailScreenState();
+  State<B2bOrderDetailScreen> createState() => _B2bOrderDetailScreenState();
 }
 
-class _OrderDetailScreenState extends State<OrderDetailScreen> {
+class _B2bOrderDetailScreenState extends State<B2bOrderDetailScreen> {
   Timer? _timer;
 
   @override
@@ -113,7 +118,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   // ── Action handlers ─────────────────────────────────────────────────────────
 
   Future<void> _accept(OrderModel o) async {
-    final p = context.read<OrderProvider>();
+    final p = context.read<B2bOrderProvider>();
     final token = context.read<AuthProvider>().token!;
     final ok = await p.acceptOrder(token, o.id);
     if (!mounted) return;
@@ -124,7 +129,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Future<void> _reject(OrderModel o) async {
     final reason = await _rejectDialog();
     if (!mounted || reason == null) return;
-    final p = context.read<OrderProvider>();
+    final p = context.read<B2bOrderProvider>();
     final token = context.read<AuthProvider>().token!;
     final ok = await p.rejectOrder(token, o.id, reason: reason);
     if (!mounted) return;
@@ -140,7 +145,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       const Color(0xFF7C3AED),
     );
     if (!confirmed || !mounted) return;
-    final p = context.read<OrderProvider>();
+    final p = context.read<B2bOrderProvider>();
     final token = context.read<AuthProvider>().token!;
     final ok = await p.pickupOrder(token, o.id);
     if (!mounted) return;
@@ -155,7 +160,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       const Color(0xFF0284C7),
     );
     if (!confirmed || !mounted) return;
-    final p = context.read<OrderProvider>();
+    final p = context.read<B2bOrderProvider>();
     final token = context.read<AuthProvider>().token!;
     final ok = await p.startProcessing(token, o.id);
     if (!mounted) return;
@@ -171,7 +176,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
     if (!confirmed || !mounted) return;
 
-    final p     = context.read<OrderProvider>();
+    final p     = context.read<B2bOrderProvider>();
     final auth  = context.read<AuthProvider>();
     final token = auth.token!;
 
@@ -197,12 +202,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         orderNumber: o.orderNumber,
         service:     o.serviceName,
         initialOtp:  otp,
-        detailUrlBuilder: ApiConstants.orderDetail,
+        detailUrlBuilder: ApiConstants.b2bOrderDetail,
         onVerified:  () {
           Navigator.of(context).pop(); // close sheet
           // Refresh the order so it shows inward_done state
           final auth = context.read<AuthProvider>();
-          context.read<OrderProvider>().fetchOrders(auth.token ?? '');
+          context.read<B2bOrderProvider>().fetchOrders(auth.token ?? '');
         },
       ),
     );
@@ -220,17 +225,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final o = context.select<OrderProvider, OrderModel>((p) =>
+    final o = context.select<B2bOrderProvider, OrderModel>((p) =>
         p.orders.firstWhere((x) => x.id == widget.order.id,
             orElse: () => widget.order));
-    final isActing = context.watch<OrderProvider>().isActing;
+    final isActing = context.watch<B2bOrderProvider>().isActing;
     final badge = orderBadgeStyle(o.status);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(o.orderNumber.isNotEmpty
-            ? '#${o.orderNumber}'
-            : '#${o.id}'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(o.orderNumber.isNotEmpty ? '#${o.orderNumber}' : '#${o.id}'),
+            const SizedBox(width: 8),
+            const _B2bTag(),
+          ],
+        ),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
@@ -251,12 +261,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               if ((o.timerRunning || o.isCompleted) && o.serviceDeadline != null)
                 const SizedBox(height: 16),
 
-              // ── Service info ──────────────────────────────────────────────
-              _sectionTitle('Service Details'),
+              // ── Company / service info ──────────────────────────────────
+              _sectionTitle('Company & Service Details'),
               _card([
+                if (o.customerName.isNotEmpty)
+                  _row(Icons.apartment_rounded, 'Company', o.customerName),
                 _row(Icons.local_laundry_service_outlined, 'Service', o.serviceName),
-                if (o.category.isNotEmpty)
-                  _row(Icons.category_outlined, 'Category', o.category),
+                if (o.customerAddress.isNotEmpty)
+                  _row(Icons.location_on_outlined, 'Address', o.customerAddress),
+                if (o.customerPhone.isNotEmpty)
+                  _row(Icons.call_outlined, 'Site Contact', o.customerPhone),
                 _row(Icons.currency_rupee_rounded, 'Your Earnings',
                     '₹${o.vendorAmount.toStringAsFixed(0)}',
                     valueColor: AppColors.primary),
@@ -271,7 +285,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 _row(Icons.schedule_rounded, 'Assigned',
                     _fmt(o.assignedAt)),
                 if (o.pickupAt != null || o.pickupTimeSlot.isNotEmpty)
-                  _row(Icons.directions_car_outlined, 'Customer Pickup Slot',
+                  _row(Icons.directions_car_outlined, 'Pickup Slot',
                       _pickupStr(o)),
                 if (o.acceptedAt != null)
                   _row(Icons.check_circle_outline, 'Accepted', _fmt(o.acceptedAt!)),
@@ -287,9 +301,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ]),
               const SizedBox(height: 16),
 
-              // ── Items ─────────────────────────────────────────────────────
+              // ── Items — B2B's items[].garment[] shape maps to the same
+              // OrderItem fields as retail (name/quantity/vendor_price/total).
+              // types_of_clothes is always [] for B2B (no per-garment cloth-type
+              // breakdown exists in the B2B schema), so OrderItemsTable simply
+              // omits that chip row — nothing is faked here. ──
               if (o.items.isNotEmpty) ...[
-                _sectionTitle('Items & Vendor Prices'),
+                _sectionTitle('Garments & Vendor Prices'),
                 OrderItemsTable(o: o),
                 const SizedBox(height: 16),
               ],
@@ -412,5 +430,28 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (o.pickupAt != null) parts.add(DateFormat('EEE, MMM d').format(o.pickupAt!.toLocal()));
     if (o.pickupTimeSlot.isNotEmpty) parts.add(o.pickupTimeSlot);
     return parts.join(' • ');
+  }
+}
+
+// ── Small "B2B" tag shown next to the order number in the app bar ───────────
+
+class _B2bTag extends StatelessWidget {
+  const _B2bTag();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.primary.withAlpha(80)),
+      ),
+      child: const Text('B2B',
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary)),
+    );
   }
 }

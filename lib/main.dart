@@ -7,6 +7,7 @@ import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/onboarding_provider.dart';
 import 'providers/order_provider.dart';
+import 'providers/b2b_order_provider.dart';
 import 'providers/status_provider.dart';
 import 'screens/splash/splash_screen.dart';
 import 'services/notification_service.dart';
@@ -42,6 +43,7 @@ class VendorApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => OnboardingProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => B2bOrderProvider()),
         ChangeNotifierProvider(create: (_) => StatusProvider()),
       ],
       child: MaterialApp(

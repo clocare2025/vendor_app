@@ -89,15 +89,23 @@ class OrderCard extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    order.orderNumber.isNotEmpty
-                                        ? '#${order.orderNumber}'
-                                        : '#${order.id.substring(0, 8).toUpperCase()}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 15,
-                                        color: AppColors.textPrimary,
-                                        letterSpacing: -0.2),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        order.orderNumber.isNotEmpty
+                                            ? '#${order.orderNumber}'
+                                            : '#${order.id.substring(0, 8).toUpperCase()}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 15,
+                                            color: AppColors.textPrimary,
+                                            letterSpacing: -0.2),
+                                      ),
+                                      if (order.isB2b) ...[
+                                        const SizedBox(width: 6),
+                                        const _B2bChip(),
+                                      ],
+                                    ],
                                   ),
                                   const SizedBox(height: 2),
                                   Text(order.serviceName,
@@ -207,6 +215,29 @@ class OrderCard extends StatelessWidget {
           const Color(0xFFF59E0B), const Color(0xFFFFFBEB));
     }
     return null;
+  }
+}
+
+// ── B2B chip — small tag distinguishing B2B orders from retail in the list ──
+
+class _B2bChip extends StatelessWidget {
+  const _B2bChip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.primary.withAlpha(80)),
+      ),
+      child: const Text('B2B',
+          style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary)),
+    );
   }
 }
 

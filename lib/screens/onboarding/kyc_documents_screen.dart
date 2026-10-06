@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/image_compress_util.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/onboarding_provider.dart';
 import '../../widgets/custom_button.dart';
@@ -26,11 +27,14 @@ class _KycDocumentsScreenState extends State<KycDocumentsScreen> {
     final picked = await _picker.pickImage(source: source, imageQuality: 80);
     if (picked == null || !mounted) return;
 
+    final compressed = await ImageCompressUtil.compress(File(picked.path));
+    if (!mounted) return;
+
     final p = context.read<OnboardingProvider>();
     if (isProfile) {
-      p.profilePic = File(picked.path);
+      p.profilePic = compressed;
     } else {
-      p.idProofPic = File(picked.path);
+      p.idProofPic = compressed;
     }
     setState(() {});
   }

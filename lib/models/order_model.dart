@@ -32,6 +32,12 @@ class OrderModel {
   final String serviceName;
   final String category;
 
+  // Distinguishes retail vs B2B orders — additive field, backend now sends
+  // "retail" or "b2b" for both order families (see buildOrderPayload /
+  // buildB2BOrderPayload in spinovo_api). Defaults to 'retail' so any older
+  // cached/mocked JSON without this field still parses safely.
+  final String orderType;
+
   // ── Status ──────────────────────────────────────────────────────────────────
   // Values: assigned | accepted | picked_up | processing | completed | rejected
   final String status;
@@ -72,6 +78,7 @@ class OrderModel {
     required this.orderNumber,
     required this.serviceName,
     this.category = '',
+    this.orderType = 'retail',
     required this.status,
     required this.vendorAmount,
     required this.customerName,
@@ -105,6 +112,7 @@ class OrderModel {
   bool get isCompleted   => status == 'completed' || status == 'inward_done';
   bool get isRejected    => status == 'rejected';
   bool get isCancelled   => status == 'cancelled';
+  bool get isB2b         => orderType == 'b2b';
 
   bool get canAccept            => isAssigned;
   bool get canReject            => isAssigned;
@@ -130,6 +138,7 @@ class OrderModel {
       orderNumber: json['order_number']?.toString() ?? '',
       serviceName: json['service']?.toString() ?? json['service_name']?.toString() ?? '',
       category: json['category']?.toString() ?? '',
+      orderType: json['orderType']?.toString() ?? 'retail',
       status: json['status']?.toString() ?? 'assigned',
       vendorAmount: (json['vendor_amount'] as num?)?.toDouble() ?? 0.0,
       customerName: customer['name']?.toString() ?? json['customer_name']?.toString() ?? '',
@@ -171,6 +180,7 @@ class OrderModel {
       orderNumber: orderNumber,
       serviceName: serviceName,
       category: category,
+      orderType: orderType,
       status: status ?? this.status,
       vendorAmount: vendorAmount,
       customerName: customerName,
